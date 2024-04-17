@@ -25,12 +25,18 @@
 <script setup>
 import {ref} from "vue";
 import { showToast } from 'vant';
-
 import 'vant/es/toast/style';
+import {useRouter} from "vue-router"
+
+
+const router = useRouter()
+
 
 
 const onClickLeft = () => alert('左');
-const onClickRight = () => alert("右");
+const onClickRight = () => {
+  router.push('/search')
+};
 
 const active = ref("index");
 const onChange = (index) => showToast(`标签 ${index}`);

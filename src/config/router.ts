@@ -1,12 +1,15 @@
 import Index from "../pages/Index.vue";
-import Team from "../pages/Team.vue";
-import User from "../pages/User.vue";
+
+import UserPage from "../pages/UserPage.vue";
+import TeamPage from "../pages/TeamPage.vue";
+import SearchPage from "../pages/SearchPage.vue";
 
 
 const routes = [
     { path: '/', component: Index },
-    { path: '/team', component: Team },
-    { path: '/user', component: User },
+    { path: '/team', component: TeamPage },
+    { path: '/user', component: UserPage },
+    { path: '/search', component: SearchPage },
 ]
 
 export default routes;
