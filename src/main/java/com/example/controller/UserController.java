@@ -1,0 +1,182 @@
+package com.example.controller;
+
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.example.comment.BaseResponse;
+import com.example.comment.ErrorCode;
+import com.example.comment.ResultUtils;
+import com.example.exception.BusinessException;
+import com.example.module.domain.User;
+import com.example.module.request.UserLoginRequest;
+import com.example.module.request.UserRegisterRequest;
+import com.example.service.UserService;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.util.CollectionUtils;
+import org.springframework.web.bind.annotation.*;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import static com.example.constant.UserConstant.ADMIN_ROLE;
+import static com.example.constant.UserConstant.USER_LOGIN_STATE;
+
+
+/**
+ * 用户接口
+ *
+ * @author :kano
+ */
+
+@RestController
+@RequestMapping("/user")
+@Slf4j
+@Api(tags = "用户相关接口")
+@CrossOrigin(origins = "http://localhost:5173")
+public class UserController {
+
+    @Resource
+    private UserService userService;
+
+
+    //用户注册
+    @PostMapping("/register")
+    @ApiOperation("用户注册")
+    BaseResponse<Long> userRegister(@RequestBody UserRegisterRequest registerRequest){
+        if (registerRequest == null ){
+            log.info("registerRequest is null");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+
+        String userAccount = registerRequest.getUserAccount();
+        String password = registerRequest.getPassword();
+        String checkPassword = registerRequest.getCheckPassword();
+        String planetCode = registerRequest.getPlanetCode();
+
+        if (StringUtils.isAnyBlank(userAccount,password,checkPassword,planetCode)){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        long register = userService.userRegister(userAccount, password, checkPassword, planetCode);
+        return ResultUtils.success(register);
+    }
+
+    //用户登录
+    @ApiOperation("用户登录")
+    @PostMapping("/login")
+    BaseResponse<User> userLogin(@RequestBody UserLoginRequest loginRequest, HttpServletRequest request){
+        if (loginRequest == null ){
+            log.info("loginRequest is null");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+
+        String userAccount = loginRequest.getUserAccount();
+        String password = loginRequest.getPassword();
+
+        if (StringUtils.isAnyBlank(userAccount,password)){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User user = userService.userLogin(userAccount, password, request);
+        return ResultUtils.success(user);
+    }
+
+    @GetMapping("/search")
+    @ApiOperation("用户脱敏")
+    BaseResponse<List<User>> userGetByUsername(String username,HttpServletRequest request){
+
+        if (!isAdmin(request)){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.like("username",username);
+        List<User> list = userService.list(queryWrapper);
+
+        /**
+         * 返回脱敏后的用户数据
+         */
+        List<User> userList = list.stream().map(user -> {
+            return userService.getSafetyUser(user);
+        }).collect(Collectors.toList());
+
+        return ResultUtils.success(userList);
+    }
+
+    @PostMapping("/delete")
+    @ApiOperation("删除用户")
+    BaseResponse<Boolean> deleteUserById(Long id,HttpServletRequest request){
+        if (!isAdmin(request)){
+            throw new BusinessException(ErrorCode.NO_AUTH);
+        }
+
+        if (id < 0){
+            throw new BusinessException(ErrorCode.NULL_ERROR);
+        }
+
+        boolean b = userService.removeById(id);
+        return ResultUtils.success(b);
+    }
+
+    @PostMapping("/logout")
+    @ApiOperation("退出登录")
+     BaseResponse<Integer> userLogout(HttpServletRequest request){
+        if (request == null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        int result = userService.userLogout(request);
+        return ResultUtils.success(result);
+
+    }
+
+    /**
+     * 获取用户当前信息
+     * @return 脱敏后的用户
+     */
+    @GetMapping("/current")
+    @ApiOperation("获取用户当前信息")
+     BaseResponse<User> getCurrentUser(HttpServletRequest request){
+        Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
+        User currentUser = (User) userObj;
+
+        if (currentUser == null){
+            throw new BusinessException(ErrorCode.NOT_LOGIN);
+        }
+
+        // TODO 校验用户是否合法
+        long id = currentUser.getId();
+        User user = userService.getById(id);
+        User safetyUser = userService.getSafetyUser(user);
+        return ResultUtils.success(safetyUser);
+
+    }
+
+    /**
+     * 判断是否为管理员
+     *
+     * @return 是否为管理员是返回1
+     */
+    private boolean isAdmin(HttpServletRequest request){
+        //1.判断是否是管理员
+        Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
+        User user = (User) userObj;
+        if ( user == null  || user.getUserRole() == ADMIN_ROLE){
+            return false;
+        }
+        return true;
+    }
+
+
+    @ApiOperation("按标签搜索用户")
+    @GetMapping("/search/tags")
+    public BaseResponse<List<User>> searchUsersByTags(@RequestParam(required = false) List<String> tagNameList){
+        if (CollectionUtils.isEmpty(tagNameList)){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+
+        List<User> userList = userService.searchUsersByTags(tagNameList);
+        return ResultUtils.success(userList);
+    }
+
+
+}
