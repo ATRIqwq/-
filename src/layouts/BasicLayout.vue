@@ -33,7 +33,9 @@ const router = useRouter()
 
 
 
-const onClickLeft = () => alert('左');
+const onClickLeft = () => {
+  router.back();
+};
 const onClickRight = () => {
   router.push('/search')
 };
@@ -44,6 +46,8 @@ const onChange = (index) => showToast(`标签 ${index}`);
 </script>
 
 <style scoped>
-
+#content {
+  padding-bottom: 50px;
+}
 </style>
 
