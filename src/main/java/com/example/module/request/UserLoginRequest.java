@@ -14,5 +14,5 @@ import lombok.Data;
 public class UserLoginRequest {
     private String userAccount;
 
-    private String password;
+    private String userPassword;
 }

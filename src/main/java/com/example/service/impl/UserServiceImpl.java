@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 
 import static com.example.comment.ErrorCode.NULL_ERROR;
 import static com.example.comment.ErrorCode.PARAMS_ERROR;
+import static com.example.constant.UserConstant.ADMIN_ROLE;
 import static com.example.constant.UserConstant.USER_LOGIN_STATE;
 
 /**
@@ -252,8 +253,72 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }).map(this::getSafetyUser).collect(Collectors.toList());
     }
 
+    /**
+     * 获取当前登录用户
+     * @param request
+     * @return
+     */
+    @Override
+    public User getCurrentUser(HttpServletRequest request) {
+        if (request == null){
+            throw new BusinessException(PARAMS_ERROR);
+        }
+        User loginUser  =(User) request.getSession().getAttribute(USER_LOGIN_STATE);
 
+        if (loginUser == null){
+            throw new BusinessException(ErrorCode.NOT_LOGIN);
+        }
+        return loginUser;
+    }
 
+    /**
+     * 判断是否为管理员
+     * @param request
+     * @return
+     */
+    public boolean isAdmin(HttpServletRequest request){
+       User user = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
+
+       if (user == null || user.getUserRole()!= ADMIN_ROLE){
+           return false;
+       }
+       return true;
+    }
+
+    /**
+     * 判断是否为管理员
+     * @param loginUser
+     * @return
+     */
+    public boolean isAdmin(User loginUser){
+        return loginUser.getUserRole() == ADMIN_ROLE;
+    }
+
+    /**
+     * 更新用户信息
+     * @param user
+     * @param loginUser
+     * @return
+     */
+    @Override
+    public int updateUser(User user, User loginUser) {
+        //判断修改用户是否存在
+        Long userId = user.getId();
+        if (userId < 0){
+            throw new BusinessException(PARAMS_ERROR);
+        }
+        //权限校验
+        if (!isAdmin(loginUser) && !userId.equals(loginUser.getId())){
+            throw new BusinessException(ErrorCode.NO_AUTH);
+        }
+
+        User oldUser = this.getById(user.getId());
+        if (oldUser == null) {
+            throw new BusinessException(ErrorCode.NULL_ERROR);
+        }
+        // 3. 触发更新
+        return userMapper.updateById(user);
+    }
 
 
 }

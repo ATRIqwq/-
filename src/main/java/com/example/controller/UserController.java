@@ -35,14 +35,18 @@ import static com.example.constant.UserConstant.USER_LOGIN_STATE;
 @RequestMapping("/user")
 @Slf4j
 @Api(tags = "用户相关接口")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = "http://localhost:5173",allowCredentials = "true")
 public class UserController {
 
     @Resource
     private UserService userService;
 
 
-    //用户注册
+    /**
+     * 用户注册功能
+     * @param registerRequest
+     * @return
+     */
     @PostMapping("/register")
     @ApiOperation("用户注册")
     BaseResponse<Long> userRegister(@RequestBody UserRegisterRequest registerRequest){
@@ -63,7 +67,12 @@ public class UserController {
         return ResultUtils.success(register);
     }
 
-    //用户登录
+    /**
+     * 用户登录功能
+     * @param loginRequest
+     * @param request
+     * @return
+     */
     @ApiOperation("用户登录")
     @PostMapping("/login")
     BaseResponse<User> userLogin(@RequestBody UserLoginRequest loginRequest, HttpServletRequest request){
@@ -73,7 +82,7 @@ public class UserController {
         }
 
         String userAccount = loginRequest.getUserAccount();
-        String password = loginRequest.getPassword();
+        String password = loginRequest.getUserPassword();
 
         if (StringUtils.isAnyBlank(userAccount,password)){
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -82,6 +91,12 @@ public class UserController {
         return ResultUtils.success(user);
     }
 
+    /**
+     * 返回脱敏的用户数据
+     * @param username
+     * @param request
+     * @return
+     */
     @GetMapping("/search")
     @ApiOperation("用户脱敏")
     BaseResponse<List<User>> userGetByUsername(String username,HttpServletRequest request){
@@ -103,6 +118,12 @@ public class UserController {
         return ResultUtils.success(userList);
     }
 
+    /**
+     * 删除用户
+     * @param id
+     * @param request
+     * @return
+     */
     @PostMapping("/delete")
     @ApiOperation("删除用户")
     BaseResponse<Boolean> deleteUserById(Long id,HttpServletRequest request){
@@ -118,6 +139,11 @@ public class UserController {
         return ResultUtils.success(b);
     }
 
+    /**
+     * 退出登录
+     * @param request
+     * @return
+     */
     @PostMapping("/logout")
     @ApiOperation("退出登录")
      BaseResponse<Integer> userLogout(HttpServletRequest request){
@@ -166,7 +192,11 @@ public class UserController {
         return true;
     }
 
-
+    /**
+     * 按标签搜索用户
+     * @param tagNameList
+     * @return
+     */
     @ApiOperation("按标签搜索用户")
     @GetMapping("/search/tags")
     public BaseResponse<List<User>> searchUsersByTags(@RequestParam(required = false) List<String> tagNameList){
@@ -177,6 +207,42 @@ public class UserController {
         List<User> userList = userService.searchUsersByTags(tagNameList);
         return ResultUtils.success(userList);
     }
+
+    /**
+     * 更新用户信息
+     * @param user
+     * @param request
+     * @return
+     */
+    @PostMapping("/update")
+    @ApiOperation("更新用户信息")
+    public BaseResponse<Integer> updateUser(@RequestBody User user,HttpServletRequest request){
+        if (user == null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+
+        User loginUser = userService.getCurrentUser(request);
+
+        int result = userService.updateUser(user,loginUser);
+        return ResultUtils.success(result);
+
+    }
+
+    /**
+     * 主页展示用户
+     * @param
+     * @return userList
+     */
+    @ApiOperation("主页展示用户")
+    @GetMapping("/recommend")
+    public BaseResponse<List<User>> recommendUsers(){
+
+        List<User> list = userService.list();
+        List<User> userList = list.stream().map(user -> userService.getSafetyUser(user)).collect(Collectors.toList());
+        return ResultUtils.success(userList);
+    }
+
+
 
 
 }
