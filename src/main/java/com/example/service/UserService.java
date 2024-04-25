@@ -1,5 +1,6 @@
 package com.example.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.module.domain.User;
 import com.baomidou.mybatisplus.extension.service.IService;
 import org.springframework.http.HttpRequest;
@@ -85,4 +86,10 @@ public interface UserService extends IService<User> {
     int updateUser(User user, User loginUser);
 
 
+    /**
+     * 主页分页展示用户
+     * @param  pageSize, pageNum
+     * @return userList
+     */
+    List<User> pageQuery(long pageSize, long pageNum,HttpServletRequest request);
 }

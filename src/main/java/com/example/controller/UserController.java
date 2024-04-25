@@ -1,6 +1,7 @@
 package com.example.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.comment.BaseResponse;
 import com.example.comment.ErrorCode;
 import com.example.comment.ResultUtils;
@@ -13,6 +14,7 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -36,6 +38,7 @@ import static com.example.constant.UserConstant.USER_LOGIN_STATE;
 @Slf4j
 @Api(tags = "用户相关接口")
 @CrossOrigin(origins = "http://localhost:5173",allowCredentials = "true")
+
 public class UserController {
 
     @Resource
@@ -235,14 +238,11 @@ public class UserController {
      */
     @ApiOperation("主页展示用户")
     @GetMapping("/recommend")
-    public BaseResponse<List<User>> recommendUsers(){
-
-        List<User> list = userService.list();
-        List<User> userList = list.stream().map(user -> userService.getSafetyUser(user)).collect(Collectors.toList());
-        return ResultUtils.success(userList);
+    public BaseResponse<List<User>> recommendUsers(long pageSize,long pageNum, HttpServletRequest request){
+        User loginUser = (User)request.getSession().getAttribute(USER_LOGIN_STATE);
+        log.info("分页查询：{}，{},{}",pageSize,pageNum,loginUser);
+        List<User> pageResult = userService.pageQuery(pageSize, pageNum, request);
+        //分页查询
+        return ResultUtils.success(pageResult);
     }
-
-
-
-
 }

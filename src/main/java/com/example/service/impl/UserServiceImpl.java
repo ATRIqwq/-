@@ -1,8 +1,10 @@
 package com.example.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.comment.ErrorCode;
+import com.example.comment.ResultUtils;
 import com.example.exception.BusinessException;
 import com.example.module.domain.User;
 import com.example.service.UserService;
@@ -11,6 +13,8 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.DigestUtils;
@@ -21,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -42,6 +47,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     @Resource
     private UserMapper userMapper;
+
+    @Resource
+    private RedisTemplate<String,Object> redisTemplate;
 
     //盐值  用来加密用户密码
     private static final String SALT = "kano";
@@ -318,6 +326,32 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }
         // 3. 触发更新
         return userMapper.updateById(user);
+    }
+
+    @Override
+    public List<User> pageQuery(long pageSize, long pageNum,HttpServletRequest request) {
+        //1.读缓存
+        User loginUser = getCurrentUser(request);
+        String redisKey = String.format("partner:user:recommend:%s", loginUser.getId());
+        ValueOperations<String, Object> opsForValue = redisTemplate.opsForValue();
+        List<User> userList =(List<User>)opsForValue.get(redisKey);
+        if (userList!=null){
+           return  userList;
+        }
+
+
+        //2.缓存中没有数据时，读数据库，并且加入缓存
+        Page<User> list = page(new Page<>(pageNum,pageSize));
+        List<User> records = list.getRecords();
+        userList = records.stream().map(this::getSafetyUser).collect(Collectors.toList());
+
+        opsForValue.set(redisKey,userList,30000, TimeUnit.MILLISECONDS);
+
+        return userList;
+
+
+
+
     }
 
 
