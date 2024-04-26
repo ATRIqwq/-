@@ -1,12 +1,11 @@
 package com.example.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.comment.BaseResponse;
 import com.example.comment.ErrorCode;
 import com.example.comment.ResultUtils;
 import com.example.exception.BusinessException;
-import com.example.module.domain.User;
+import com.example.module.entity.User;
 import com.example.module.request.UserLoginRequest;
 import com.example.module.request.UserRegisterRequest;
 import com.example.service.UserService;
@@ -14,7 +13,6 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
 

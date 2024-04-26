@@ -1,10 +1,9 @@
 package com.example.job;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.example.module.domain.User;
+import com.example.module.entity.User;
 import com.example.service.UserService;
 import lombok.extern.slf4j.Slf4j;
-import org.redisson.Redisson;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -29,7 +28,6 @@ public class PreCacheJob {
     private UserService userService;
     @Resource
     private RedissonClient redissonClient;
-
 
     //核心用户
     private  List<Long> mainUserList = Arrays.asList(1L,2L);

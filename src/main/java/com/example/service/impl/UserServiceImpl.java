@@ -4,9 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.comment.ErrorCode;
-import com.example.comment.ResultUtils;
 import com.example.exception.BusinessException;
-import com.example.module.domain.User;
+import com.example.module.entity.User;
 import com.example.service.UserService;
 import com.example.mapper.UserMapper;
 import com.google.gson.Gson;
@@ -348,10 +347,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         opsForValue.set(redisKey,userList,30000, TimeUnit.MILLISECONDS);
 
         return userList;
-
-
-
-
     }
 
 

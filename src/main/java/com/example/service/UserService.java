@@ -1,9 +1,7 @@
 package com.example.service;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.example.module.domain.User;
+import com.example.module.entity.User;
 import com.baomidou.mybatisplus.extension.service.IService;
-import org.springframework.http.HttpRequest;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
