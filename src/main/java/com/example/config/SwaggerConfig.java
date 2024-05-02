@@ -46,8 +46,8 @@ public class SwaggerConfig {
      */
     private ApiInfo apiInfo() {
         return new ApiInfoBuilder()
-                .title("鱼皮用户中心")
-                .description("鱼皮用户中心接口文档")
+                .title("Kano用户中心")
+                .description("Kano用户中心接口文档")
                 .termsOfServiceUrl("https://github.com/kongshier")
                 .contact(new Contact("shier", "https://blog.csdn.net/qq_56098191?spm=1000.2115.3001.5343","2927527234@qq.com"))
                 .version("1.0")

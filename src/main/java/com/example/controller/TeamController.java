@@ -6,11 +6,14 @@ import com.example.comment.ErrorCode;
 import com.example.comment.ResultUtils;
 import com.example.exception.BusinessException;
 import com.example.module.entity.User;
+import com.example.module.request.JoinTeamRequest;
 import com.example.module.request.TeamAddRequest;
 import com.example.module.request.TeamQuery;
+import com.example.module.request.TeamUpdateRequest;
 import com.example.module.vo.TeamUserVO;
 import com.example.service.TeamService;
 import com.example.service.UserService;
+import com.example.service.UserTeamService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +42,9 @@ public class TeamController {
     private TeamService teamService;
     @Resource
     private UserService userService;
+
+    @Resource
+    private UserTeamService userTeamService;
 
     /**
      * 添加队伍
@@ -76,6 +82,46 @@ public class TeamController {
         List<TeamUserVO> teamList = teamService.listTeams(teamQuery,isAdmin);
 
         return ResultUtils.success(teamList);
+    }
+
+    /**
+     * 修改队伍信息
+     * @param team
+     * @param request
+     * @return
+     */
+    @PostMapping("/update")
+    @ApiOperation("修改队伍")
+    public BaseResponse<Boolean> updateTeam(@RequestBody TeamUpdateRequest team, HttpServletRequest request){
+        if (team == null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User currentUser = userService.getCurrentUser(request);
+        if (currentUser == null){
+            throw new BusinessException(ErrorCode.NOT_LOGIN);
+        }
+        boolean result = teamService.updateTeam(team, currentUser);
+        return ResultUtils.success(result);
+    }
+
+    /**
+     * 用户加入队伍
+     * @param joinTeamRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/join")
+    @ApiOperation("用户加入队伍")
+    public BaseResponse<Boolean> joinTeam(@RequestBody JoinTeamRequest joinTeamRequest,HttpServletRequest request){
+        if (joinTeamRequest == null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User currentUser = userService.getCurrentUser(request);
+        if (currentUser == null){
+            throw new BusinessException(ErrorCode.NOT_LOGIN);
+        }
+        boolean result = teamService.joinTeam(joinTeamRequest, currentUser);
+        return ResultUtils.success(result);
     }
 
 }

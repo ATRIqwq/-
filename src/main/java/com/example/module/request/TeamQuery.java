@@ -3,9 +3,12 @@ package com.example.module.request;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.io.Serializable;
+
 @EqualsAndHashCode(callSuper = true)
 @Data
-public class TeamQuery extends PageRequest{
+public class TeamQuery extends PageRequest implements Serializable {
+    private static final long serialVersionUID = -6720178295789790253L;
     /**
      * id
      */

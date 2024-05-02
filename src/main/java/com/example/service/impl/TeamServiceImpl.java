@@ -9,8 +9,10 @@ import com.example.mapper.TeamMapper;
 import com.example.module.entity.Team ;
 import com.example.module.entity.User;
 import com.example.module.entity.UserTeam;
+import com.example.module.request.JoinTeamRequest;
 import com.example.module.request.TeamAddRequest;
 import com.example.module.request.TeamQuery;
+import com.example.module.request.TeamUpdateRequest;
 import com.example.module.vo.TeamUserVO;
 import com.example.module.vo.UserVO;
 import com.example.service.TeamService;
@@ -44,9 +46,9 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
 
     @Resource
     private UserService userService;
-
     @Resource
     private UserTeamService userTeamService;
+
 
     /**
      * 添加队伍
@@ -150,7 +152,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
     @Override
     public List<TeamUserVO> listTeams(TeamQuery teamQuery, boolean isAdmin) {
         QueryWrapper<Team> wrapper = new QueryWrapper<>();
-
+        //构造查询条件
         Long teamId = teamQuery.getId();
         if (teamId!=null && teamId > 0){
             wrapper.lambda().eq(Team::getId,teamId);
@@ -167,6 +169,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
         if (maxNum != null && maxNum > 0){
             wrapper.lambda().eq(Team::getMaxNum,maxNum);
         }
+        //普通用户只能查询公开的队伍
         Integer status = teamQuery.getStatus();
         TeamStatusEnum statusEnum = TeamStatusEnum.getEnumByValues(status);
         if (statusEnum == null){
@@ -179,6 +182,8 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
 
         //过期队伍不展示  empire > now() or empireTime == null
         wrapper.and(w -> w.gt("expireTime",new Date())).or().isNull("expireTime");
+
+//        wrapper.lambda().gt(Team::getExpireTime,new Date()).or().isNull(Team::getExpireTime);
 
 
         String searchText = teamQuery.getSearchText();
@@ -209,6 +214,116 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
         }
 
         return teamUserVOList;
+    }
+
+
+    /**
+     * 更新队伍
+     * @param team
+     * @param loginUser
+     * @return
+     */
+    public boolean updateTeam(TeamUpdateRequest team,User loginUser){
+        if (team == null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        Long teamId = team.getId();
+        if (teamId == null || teamId <0){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+
+        Team oldTeam = this.getById(teamId);
+
+        if (oldTeam == null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"要修改的队伍不存在");
+        }
+
+        //只有队长和管理员可以修改队伍
+        if (!oldTeam.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)){
+            throw new BusinessException(ErrorCode.NO_AUTH);
+        }
+
+//        //如果用户传入的新值和老值一致，就不用 update 了
+//        TeamUpdateRequest oldTeamData = new TeamUpdateRequest();
+//        BeanUtils.copyProperties(oldTeam,oldTeamData);
+
+        Integer status = team.getStatus();
+        TeamStatusEnum teamStatusEnum = TeamStatusEnum.getEnumByValues(status);
+        if (teamStatusEnum == TeamStatusEnum.SECRET ){
+            if (StringUtils.isBlank(team.getPassword())){
+                throw new BusinessException(ErrorCode.PARAMS_ERROR,"加密房间必须设置密码");
+            }
+        }
+
+        Team updateTeam = new Team();
+        BeanUtils.copyProperties(team,updateTeam);
+        return this.updateById(updateTeam);
+    }
+
+
+    /**
+     * 用户加入队伍
+     * @param joinTeamRequest
+     * @param loginUser
+     * @return
+     */
+    public boolean joinTeam(JoinTeamRequest joinTeamRequest,User loginUser){
+        if (joinTeamRequest == null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        Long teamId = joinTeamRequest.getTeamId();
+        if (teamId == null || teamId <= 0){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        Team team = this.getById(teamId);
+        if (team.getId() == null){
+            throw new BusinessException(ErrorCode.NULL_ERROR,"队伍不存在");
+        }
+        Date expireTime = team.getExpireTime();
+        if (expireTime != null && expireTime.before(new Date()) ){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"队伍已过期");
+        }
+        Integer status = team.getStatus();
+        TeamStatusEnum teamStatusEnum = TeamStatusEnum.getEnumByValues(status);
+        if (teamStatusEnum.equals(TeamStatusEnum.PRIVATE)){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"私密队伍不允许加入");
+        }
+        String password = joinTeamRequest.getPassword();
+        if (teamStatusEnum.equals(TeamStatusEnum.SECRET)){
+            if (StringUtils.isBlank(password) || !password.equals(team.getPassword())){
+                throw new BusinessException(ErrorCode.PARAMS_ERROR,"密码错误");
+            }
+        }
+
+        Long userId = loginUser.getId();
+        QueryWrapper<UserTeam> wrapper = new QueryWrapper<>();
+        wrapper.lambda().eq(UserTeam::getUserId,userId);
+        long hasJoinNum = userTeamService.count(wrapper);
+        if (hasJoinNum > 5 ){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"最多运行加入5个队伍");
+        }
+
+        QueryWrapper<UserTeam> userTeamWrapper = new QueryWrapper<>();
+        userTeamWrapper.lambda().eq(UserTeam::getTeamId,teamId)
+                .eq(UserTeam::getUserId,userId);
+        long teamUserHasJoinNum = userTeamService.count(userTeamWrapper);
+        if (teamUserHasJoinNum > 0){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"不允许重复加入已加入队伍");
+        }
+
+        QueryWrapper<UserTeam> queryWrapper = new QueryWrapper<>();
+        queryWrapper.lambda().eq(UserTeam::getTeamId,teamId);
+        long teamHasJoinNum = userTeamService.count(queryWrapper);
+        if (teamHasJoinNum > team.getMaxNum()){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"队伍已满");
+        }
+
+        UserTeam userTeam = new UserTeam();
+        userTeam.setJoinTime(new Date());
+        userTeam.setTeamId(teamId);
+        userTeam.setUserId(userId);
+        return userTeamService.save(userTeam);
+
     }
 
 
