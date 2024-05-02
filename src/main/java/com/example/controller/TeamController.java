@@ -6,10 +6,7 @@ import com.example.comment.ErrorCode;
 import com.example.comment.ResultUtils;
 import com.example.exception.BusinessException;
 import com.example.module.entity.User;
-import com.example.module.request.JoinTeamRequest;
-import com.example.module.request.TeamAddRequest;
-import com.example.module.request.TeamQuery;
-import com.example.module.request.TeamUpdateRequest;
+import com.example.module.request.*;
 import com.example.module.vo.TeamUserVO;
 import com.example.service.TeamService;
 import com.example.service.UserService;
@@ -121,6 +118,44 @@ public class TeamController {
             throw new BusinessException(ErrorCode.NOT_LOGIN);
         }
         boolean result = teamService.joinTeam(joinTeamRequest, currentUser);
+        return ResultUtils.success(result);
+    }
+
+
+    /**
+     * 用户退出队伍
+     * @param teamQuitRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/quit")
+    @ApiOperation("用户退出队伍")
+    public BaseResponse<Boolean> quitTeam(@RequestBody TeamQuitRequest teamQuitRequest,HttpServletRequest request){
+        if (teamQuitRequest == null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User currentUser = userService.getCurrentUser(request);
+        boolean result =  teamService.quitTeam(teamQuitRequest,currentUser);
+        return ResultUtils.success(result);
+    }
+
+    /**
+     * 解散队伍
+     * @param teamQuitRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/delete")
+    @ApiOperation("解散队伍")
+    public BaseResponse<Boolean> deleteTeam(@RequestBody TeamQuitRequest teamQuitRequest,HttpServletRequest request){
+        if (teamQuitRequest == null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User currentUser = userService.getCurrentUser(request);
+        boolean result =  teamService.deleteTeam(teamQuitRequest,currentUser);
+        if (!result) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "删除失败");
+        }
         return ResultUtils.success(result);
     }
 

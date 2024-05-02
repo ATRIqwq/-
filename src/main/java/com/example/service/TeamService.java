@@ -3,10 +3,7 @@ package com.example.service;
 import com.example.module.entity.Team;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.module.entity.User;
-import com.example.module.request.JoinTeamRequest;
-import com.example.module.request.TeamAddRequest;
-import com.example.module.request.TeamQuery;
-import com.example.module.request.TeamUpdateRequest;
+import com.example.module.request.*;
 import com.example.module.vo.TeamUserVO;
 
 import javax.servlet.http.HttpServletRequest;
@@ -54,4 +51,21 @@ public interface TeamService extends IService<Team> {
      * @return
      */
      boolean joinTeam(JoinTeamRequest joinTeamRequest, User loginUser);
+
+
+    /**
+     * 用户退出队伍
+     * @param teamQuitRequest
+     * @param currentUser
+     * @return
+     */
+    boolean quitTeam(TeamQuitRequest teamQuitRequest, User currentUser);
+
+    /**
+     * 解散队伍
+     * @param teamQuitRequest
+     * @param currentUser
+     * @return
+     */
+    boolean deleteTeam(TeamQuitRequest teamQuitRequest, User currentUser);
 }
