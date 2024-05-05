@@ -25,7 +25,7 @@ public interface TeamService extends IService<Team> {
      * @param request
      * @return
      */
-    Long addTeam(TeamAddRequest teamAddRequest, HttpServletRequest request);
+    Long addTeam(TeamAddRequest teamAddRequest, User loginUser);
 
 
     /**

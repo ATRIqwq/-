@@ -16,6 +16,7 @@ import com.example.module.vo.UserVO;
 import com.example.service.TeamService;
 import com.example.service.UserService;
 import com.example.service.UserTeamService;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,7 @@ import static java.time.LocalTime.now;
  * @since 2024-04-25
  */
 @Service
+@Slf4j
 public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements TeamService {
 
     @Resource
@@ -52,12 +54,12 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
     /**
      * 添加队伍
      * @param teamAddRequest
-     * @param request
+     * @param loginUser
      * @return
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long addTeam(TeamAddRequest teamAddRequest, HttpServletRequest request) {
+    public Long addTeam(TeamAddRequest teamAddRequest, User loginUser) {
 
         //1
         //请求参数是否为空？
@@ -65,7 +67,6 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
         BeanUtils.copyProperties(teamAddRequest,team);
         //2
         //是否登录，未登录不允许创建
-        User loginUser = userService.getCurrentUser(request);
         if (loginUser == null){
             throw new BusinessException(ErrorCode.NOT_LOGIN);
         }
@@ -124,6 +125,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
 
         //4
         //插入队伍信息到队伍表
+        team.setUserId(userId);
         boolean saveTeamResult = this.save(team);
         if (!saveTeamResult){
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"新增队伍失败");
@@ -151,12 +153,32 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
      */
     @Override
     public List<TeamUserVO> listTeams(TeamQuery teamQuery, boolean isAdmin) {
+        log.info("查询队伍参数：{}",teamQuery);
         QueryWrapper<Team> wrapper = new QueryWrapper<>();
+
         //构造查询条件
         Long teamId = teamQuery.getId();
         if (teamId!=null && teamId > 0){
             wrapper.lambda().eq(Team::getId,teamId);
         }
+
+        List<Long> idList = teamQuery.getIdList();
+        if (!CollectionUtils.isEmpty(idList)){
+            wrapper.lambda().in(Team::getId,idList);
+        }
+
+        String searchText = teamQuery.getSearchText();
+        if (StringUtils.isNotBlank(searchText)){
+            //        wrapper.and(w -> w.like("name",searchText)).or().like("description",searchText);
+            wrapper.lambda().like(Team::getName,searchText).or().like(Team::getDescription,searchText);
+        }
+
+        Long queryUserId = teamQuery.getUserId();
+        if (queryUserId != null && queryUserId >0){
+            wrapper.lambda().eq(Team::getUserId,queryUserId);
+        }
+
+
         String teamName = teamQuery.getName();
         if (StringUtils.isNotBlank(teamName)){
             wrapper.lambda().like(Team::getName,teamName);
@@ -186,14 +208,11 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
 //        wrapper.lambda().gt(Team::getExpireTime,new Date()).or().isNull(Team::getExpireTime);
 
 
-        String searchText = teamQuery.getSearchText();
-        wrapper.and(w -> w.like("name",searchText)).or().like("description",searchText);
 
         List<Team> teamList = list(wrapper);
-        if (teamList == null){
-            return null;
+        if (CollectionUtils.isEmpty(teamList)){
+            return new ArrayList<>();
         }
-
 
         List<TeamUserVO> teamUserVOList = new ArrayList<>();
         //关联查询用户表
@@ -204,12 +223,14 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
             }
             User user = userService.getById(userId);
             TeamUserVO teamUserVO = new TeamUserVO();
-
-            User safetyUser = userService.getSafetyUser(user);
-            UserVO userVO = new UserVO();
-            BeanUtils.copyProperties(user,userVO);
             BeanUtils.copyProperties(team,teamUserVO);
-            teamUserVO.setCreateUser(userVO);
+            if (user != null){
+                User safetyUser = userService.getSafetyUser(user);
+                UserVO userVO = new UserVO();
+                BeanUtils.copyProperties(safetyUser,userVO);
+                teamUserVO.setCreateUser(userVO);
+            }
+
             teamUserVOList.add(teamUserVO);
         }
 

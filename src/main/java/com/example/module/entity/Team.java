@@ -11,6 +11,7 @@ import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
+import org.springframework.format.annotation.DateTimeFormat;
 
 /**
  * <p>
@@ -47,6 +48,7 @@ public class Team implements Serializable {
 
     @ApiModelProperty(value = "过期时间")
     @TableField("expireTime")
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss.SSS")
     private Date expireTime;
 
     @ApiModelProperty(value = "用户id（队长 id）")

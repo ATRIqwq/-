@@ -243,4 +243,25 @@ public class UserController {
         //分页查询
         return ResultUtils.success(pageResult);
     }
+
+    /**
+     * 根据标签相似度匹配用户
+     * @param num
+     * @param request
+     * @return
+     */
+    @GetMapping("/match")
+    @ApiOperation("根据标签匹配相似用户")
+    public BaseResponse<List<User>> matchUsers(long num,HttpServletRequest request){
+        if (num <=0 || num >20){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+
+        User loginUser = userService.getCurrentUser(request);
+        List<User> userList = userService.matchUsers(num,loginUser);
+        return ResultUtils.success(userList);
+
+
+    }
+
 }

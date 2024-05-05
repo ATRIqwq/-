@@ -90,4 +90,13 @@ public interface UserService extends IService<User> {
      * @return userList
      */
     List<User> pageQuery(long pageSize, long pageNum,HttpServletRequest request);
+
+
+    /**
+     * 根据标签相似度匹配用户
+     * @param num
+     * @param loginUser
+     * @return
+     */
+    List<User> matchUsers(long num, User loginUser);
 }

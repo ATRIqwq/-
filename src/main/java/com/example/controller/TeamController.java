@@ -1,11 +1,14 @@
 package com.example.controller;
 
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.comment.BaseResponse;
 import com.example.comment.ErrorCode;
 import com.example.comment.ResultUtils;
 import com.example.exception.BusinessException;
+import com.example.module.entity.Team;
 import com.example.module.entity.User;
+import com.example.module.entity.UserTeam;
 import com.example.module.request.*;
 import com.example.module.vo.TeamUserVO;
 import com.example.service.TeamService;
@@ -18,7 +21,11 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * <p>
@@ -55,8 +62,8 @@ public class TeamController {
         if (teamAddRequest == null){
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-
-        Long teamId =  teamService.addTeam(teamAddRequest,request);
+        User currentUser = userService.getCurrentUser(request);
+        Long teamId =  teamService.addTeam(teamAddRequest,currentUser);
         return ResultUtils.success(teamId);
     }
 
@@ -73,13 +80,51 @@ public class TeamController {
         if (teamQuery == null){
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-
-        User currentUser = userService.getCurrentUser(request);
-        boolean isAdmin = userService.isAdmin(currentUser);
+        boolean isAdmin = userService.isAdmin(request);
+        // 1、查询队伍列表
         List<TeamUserVO> teamList = teamService.listTeams(teamQuery,isAdmin);
+        QueryWrapper<UserTeam> userTeamQueryWrapper = new QueryWrapper<>();
+        try {
+            User currentUser = userService.getCurrentUser(request);
+            List<Long> teamIdList = teamList.stream().map(TeamUserVO::getId).collect(Collectors.toList());
+            // 2、查询已加入队伍
+            userTeamQueryWrapper.lambda().eq(UserTeam::getUserId,currentUser.getId())
+                    .in(UserTeam::getTeamId,teamIdList);
+            List<UserTeam> userTeamList = userTeamService.list(userTeamQueryWrapper);
+
+            // 已加入的队伍 id 集合
+            Set<Long> hasJoinTeamIdSet = userTeamList.stream().map(UserTeam::getTeamId).collect(Collectors.toSet());
+            teamList.forEach(team ->{
+                boolean hasJoin = hasJoinTeamIdSet.contains(team.getId());
+                team.setHasJoin(hasJoin);
+            });
+
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
 
         return ResultUtils.success(teamList);
     }
+
+    /**
+     * 根据ID查询队伍
+     * @param id
+     * @return
+     */
+    @GetMapping("/get")
+    @ApiOperation("根据ID查询队伍")
+    public BaseResponse<Team> getTeamById(long id) {
+        if (id <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        Team team = teamService.getById(id);
+        if (team == null) {
+            throw new BusinessException(ErrorCode.NULL_ERROR,"队伍不存在");
+        }
+        return ResultUtils.success(team);
+    }
+
 
     /**
      * 修改队伍信息
@@ -157,6 +202,52 @@ public class TeamController {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "删除失败");
         }
         return ResultUtils.success(result);
+    }
+
+    /**
+     * 查询我创建的队伍
+     * @param teamQuery
+     * @param request
+     * @return
+     */
+    @GetMapping("/list/my/create")
+    @ApiOperation("查询自己创建的队伍")
+    public BaseResponse<List<TeamUserVO>> listMyCreateTeams(TeamQuery teamQuery,HttpServletRequest request){
+        if (teamQuery == null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User currentUser = userService.getCurrentUser(request);
+        teamQuery.setUserId(currentUser.getId());
+        List<TeamUserVO> teamList = teamService.listTeams(teamQuery,true);
+        return ResultUtils.success(teamList);
+    }
+
+    /**
+     * 查询我加入的队伍
+     * @param teamQuery
+     * @param request
+     * @return
+     */
+    @GetMapping("/list/my/join")
+    @ApiOperation("查询已加入的队伍")
+    public BaseResponse<List<TeamUserVO>> listMyJoinTeams(TeamQuery teamQuery,HttpServletRequest request){
+        if (teamQuery == null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User currentUser = userService.getCurrentUser(request);
+        Long userId = currentUser.getId();
+        QueryWrapper<UserTeam> queryWrapper = new QueryWrapper<>();
+        queryWrapper.lambda().eq(UserTeam::getUserId,userId);
+        List<UserTeam> userTeamList = userTeamService.list(queryWrapper);
+
+        Map<Long, List<UserTeam>> listMap = userTeamList.stream().collect(Collectors.groupingBy(UserTeam::getTeamId));
+        List<Long> idList = new ArrayList<>(listMap.keySet());
+        teamQuery.setIdList(idList);
+        List<TeamUserVO> teamList = teamService.listTeams(teamQuery,true);
+        teamList.forEach(team ->{
+            team.setHasJoin(true);
+        });
+        return ResultUtils.success(teamList);
     }
 
 }

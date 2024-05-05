@@ -8,10 +8,12 @@ import com.example.exception.BusinessException;
 import com.example.module.entity.User;
 import com.example.service.UserService;
 import com.example.mapper.UserMapper;
+import com.example.utils.AlgorithmUtils;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.math3.util.Pair;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
@@ -20,17 +22,13 @@ import org.springframework.util.DigestUtils;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static com.example.comment.ErrorCode.NULL_ERROR;
-import static com.example.comment.ErrorCode.PARAMS_ERROR;
+import static com.example.comment.ErrorCode.*;
 import static com.example.constant.UserConstant.ADMIN_ROLE;
 import static com.example.constant.UserConstant.USER_LOGIN_STATE;
 
@@ -327,6 +325,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         return userMapper.updateById(user);
     }
 
+    /**
+     * 主页展示用户
+     * @param pageSize
+     * @param pageNum
+     * @param request
+     * @return
+     */
     @Override
     public List<User> pageQuery(long pageSize, long pageNum,HttpServletRequest request) {
         //1.读缓存
@@ -338,15 +343,65 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
            return  userList;
         }
 
-
         //2.缓存中没有数据时，读数据库，并且加入缓存
         Page<User> list = page(new Page<>(pageNum,pageSize));
         List<User> records = list.getRecords();
         userList = records.stream().map(this::getSafetyUser).collect(Collectors.toList());
-
         opsForValue.set(redisKey,userList,30000, TimeUnit.MILLISECONDS);
-
         return userList;
+    }
+
+
+    /**
+     * 根据标签相似度匹配用户
+     * @param num
+     * @param loginUser
+     * @return
+     */
+    @Override
+    public List<User> matchUsers(long num, User loginUser) {
+
+        List<User> userList = this.list();
+        String loginUserTags = loginUser.getTags();
+        Gson gson = new Gson();
+        List<String> tagList = gson.fromJson(loginUserTags, new TypeToken<List<String>>() {
+        }.getType());
+        // 用户列表的下标 => 相似度
+        List<Pair<User,Long>> list = new ArrayList<>();
+        for (int i = 0; i < userList.size(); i++) {
+            User user = userList.get(i);
+            String userTags = user.getTags();
+            if (StringUtils.isBlank(userTags) || user.getId().equals(loginUser.getId())){
+                continue;
+            }
+            List<String> userTagList = gson.fromJson(userTags, new TypeToken<List<String>>() {
+            }.getType());
+            // 计算分数
+            long distance = AlgorithmUtils.minDistance(tagList, userTagList);
+            list.add(new Pair<>(user, distance));
+        }
+
+        // 按编辑距离由小到大排序
+        List<Pair<User, Long>> topUserPairList = list.stream()
+                .sorted((a, b) -> (int) (a.getValue() - b.getValue()))
+                .limit(num)
+                .collect(Collectors.toList());
+
+        // 原本顺序的 userId 列表
+        List<Long> userIdList = topUserPairList.stream().map(pair -> pair.getKey().getId()).collect(Collectors.toList());
+        QueryWrapper<User> wrapper = new QueryWrapper<>();
+        wrapper.lambda().in(User::getId,userIdList);
+        // 1, 3, 2
+        // User1、User2、User3
+        // 1 => User1, 2 => User2, 3 => User3
+        Map<Long, List<User>> userIdUserListMap = this.list(wrapper).stream().map(user -> getSafetyUser(user)).collect(Collectors.groupingBy(User::getId));
+        List<User> finalUserList = new ArrayList<>();
+        for (Long userId : userIdList) {
+            User user = userIdUserListMap.get(userId).get(0);
+            finalUserList.add(user);
+
+        }
+        return finalUserList;
     }
 
 
