@@ -1,5 +1,5 @@
 <template>
- <user-card-list :user-list="userList" />
+ <user-card-list :user-list="userList" :loading="loading"/>
 </template>
 
 <script setup>
@@ -18,10 +18,12 @@ const {tags} = route.query;
 
 
 const userList = ref([]);
+const loading = ref(true);
 
 
 onMounted( async () =>{
   // 为给定 ID 的 user 创建请求
+  loading.value = true;
   const userListData = await  myAxios.get('/user/search/tags',{
     withCredentials: false,
     params: {
@@ -49,6 +51,7 @@ onMounted( async () =>{
     })
     userList.value = userListData;
   }
+  loading.value = false;
 })
 
 

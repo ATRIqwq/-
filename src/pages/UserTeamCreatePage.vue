@@ -26,7 +26,7 @@ onMounted(async ()=>{
 
 
 const onSearch = (val) => {
-    listTeam(val);
+  listTeam(val);
 }
 
 /**
@@ -36,7 +36,7 @@ const onSearch = (val) => {
  */
 const listTeam = async (val = '') => {
   loading.value = true;
-  const res = await myAxios.get("/team/list", {
+  const res = await myAxios.get("/team/list/my/create", {
     params: {
       searchText: val,
       pageNum: 1,
@@ -47,7 +47,6 @@ const listTeam = async (val = '') => {
   } else {
     showFailToast('加载队伍失败，请刷新重试');
   }
-
   loading.value = false;
 }
 

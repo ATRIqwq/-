@@ -1,7 +1,6 @@
 <template>
   <div id="teamPage">
     <van-search v-model="searchText" placeholder="搜索队伍" @search="onSearch"/>
-    <van-button size="small" type="primary"  @click="doJoinTeam">创建队伍</van-button>
     <team-card-list :teamList :loading="loading"/>
     <van-empty v-if="teamList?.length < 1" description="数据为空" />
 
@@ -26,7 +25,7 @@ onMounted(async ()=>{
 
 
 const onSearch = (val) => {
-    listTeam(val);
+  listTeam(val);
 }
 
 /**
@@ -36,7 +35,7 @@ const onSearch = (val) => {
  */
 const listTeam = async (val = '') => {
   loading.value = true;
-  const res = await myAxios.get("/team/list", {
+  const res = await myAxios.get("/team/list/my/join", {
     params: {
       searchText: val,
       pageNum: 1,
@@ -47,7 +46,6 @@ const listTeam = async (val = '') => {
   } else {
     showFailToast('加载队伍失败，请刷新重试');
   }
-
   loading.value = false;
 }
 

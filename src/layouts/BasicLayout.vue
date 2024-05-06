@@ -1,12 +1,12 @@
 <template>
   <van-nav-bar
-      title="标题"
+      :title="title"
       left-arrow
       @click-left="onClickLeft"
       @click-right="onClickRight"
   >
     <template #right>
-      <van-icon name="search" size="18" />
+      <van-icon name="search" size="18"/>
     </template>
   </van-nav-bar>
 
@@ -24,13 +24,29 @@
 
 <script setup>
 import {ref} from "vue";
-import { showToast } from 'vant';
 import 'vant/es/toast/style';
 import {useRouter} from "vue-router"
+import routes from "../config/router.ts";
 
 
-const router = useRouter()
 
+const router = useRouter();
+const DEFAULT_TITLE = '伙伴匹配';
+const title = ref(DEFAULT_TITLE);
+
+
+/**
+ * 根据路由动态切换标题
+ */
+
+router.beforeEach((to,from)=>{
+  const toPath = to.path;
+  const route = routes.find((route) =>{
+    return toPath === route.path;
+  })
+
+  title.value = route?.title ?? DEFAULT_TITLE;
+})
 
 
 const onClickLeft = () => {
@@ -41,7 +57,7 @@ const onClickRight = () => {
 };
 
 const active = ref("index");
-const onChange = (index) => showToast(`标签 ${index}`);
+// const onChange = (index) => showToast(`标签 ${index}`);
 
 </script>
 
