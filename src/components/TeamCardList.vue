@@ -27,7 +27,7 @@
         </template>
         <template #bottom>
           <div>
-            {{ '最大人数: ' + team.maxNum }}
+            {{ `最大人数: ${team.hasJoinNum}/${team.maxNum}` }}
           </div>
           <div v-if="team.expireTime">
             {{ '过期时间: ' + team.expireTime }}
@@ -38,7 +38,7 @@
         </template>
         <template #footer>
           <van-button v-if="team.userId !== currentUser?.id && !team.hasJoin" size="small" type="primary"
-                      plain @click="doJoinTeam(team.id)">加入队伍</van-button>
+                      plain @click="preJoinTeam(team)">加入队伍</van-button>
 
           <van-button v-if="team.userId === currentUser?.id" size="small" type="success"
                       plain @click="doUpdateTeam(team.id)">修改队伍</van-button>
@@ -51,8 +51,11 @@
         </template>
       </van-card>
     </van-skeleton>
-
   </div>
+
+  <van-dialog v-model:show="showPasswordDialog" title="请输入密码" show-cancel-button @confirm="doJoinTeam" @cancel="doJoinCancel">
+    <van-field v-model="password" placeholder="请输入密码"/>
+  </van-dialog>
 
 </template>
 
@@ -65,16 +68,23 @@ import {useRouter} from "vue-router";
 import {onMounted, ref} from "vue";
 import {getCurrentUser} from "../service/userService.ts";
 
+const router = useRouter();
+const url = "https://kano-img-bed.oss-cn-shanghai.aliyuncs.com/20240429101152.png"
+const currentUser = ref();
+const showPasswordDialog = ref(false);
+const password = ref('');
+const joinTeamId = ref(0);
 
 interface TeamCardListProps {
   loading: boolean;
   teamList: TeamType[];
 }
+
 onMounted(async ()=>{
   currentUser.value = await getCurrentUser();
 })
 
-const currentUser = ref();
+
 
 const props = withDefaults(defineProps<TeamCardListProps>(), {
   // @ts-ignore
@@ -82,20 +92,24 @@ const props = withDefaults(defineProps<TeamCardListProps>(), {
   loading:true,
 });
 
-const router = useRouter();
-const url = "https://kano-img-bed.oss-cn-shanghai.aliyuncs.com/20240429101152.png"
 
 /**
  * 加入队伍
  */
-const doJoinTeam = async (id:number) => {
+const doJoinTeam = async () => {
+  if (!joinTeamId.value){
+    return;
+  }
+
   const res = await myAxios.post('/team/join', {
-    teamId: id,
+    teamId: joinTeamId.value,
+    password: password.value
   });
   if (res.data?.code === 0) {
     showSuccessToast('加入成功');
   } else {
     showFailToast('加入失败' + (res.data.description ? `，${res.data.description}` : ''));
+    doJoinCancel();
   }
 }
 
@@ -138,6 +152,24 @@ const doUpdateTeam = (id: number) => {
       id,
     }
   })
+}
+
+/**
+ * 判断是不是加密房间，是的话显示密码框
+ * @param team
+ */
+const preJoinTeam = (team: TeamType) => {
+  joinTeamId.value = team.id;
+  if (team.status === 0) {
+    doJoinTeam();
+  } else {
+    showPasswordDialog.value = true;
+  }
+}
+
+const doJoinCancel = () => {
+  joinTeamId.value = 0;
+  password.value = '';
 }
 
 </script>

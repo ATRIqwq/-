@@ -1,4 +1,5 @@
 import axios from "axios";
+import {showFailToast} from "vant";
 const myAxios = axios.create({
     baseURL: 'http://localhost:8080/',
 });
@@ -20,6 +21,12 @@ axios.interceptors.response.use(function (response) {
     // 2xx 范围内的状态码都会触发该函数。
     // 对响应数据做点什么
     console.log("我收到你的响应了,",response)
+    //未登录则拦截，跳转到登录页
+    if(response?.data?.code === 40100){
+        showFailToast("请先登录")
+        const redirectUrl = window.location.href;
+        window.location.href = `/user/login?=redirect=${redirectUrl}`;
+    }
     return response.data;
 }, function (error) {
     // 超出 2xx 范围的状态码都会触发该函数。

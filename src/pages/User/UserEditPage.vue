@@ -20,13 +20,14 @@
 <script setup>
 import {ref} from "vue";
 import {useRoute,useRouter} from "vue-router"
-import {getCurrentUser} from "../service/userService.ts";
-import myAxios from "../plugins/myAxios.ts";
+import {getCurrentUser} from "../../service/userService.ts";
+import myAxios from "../../plugins/myAxios.ts";
 import {showFailToast, showSuccessToast} from "vant";
 
 
 const route = useRoute();
 const router = useRouter();
+
 
 //接收user页面传递的参数  'email','电话',user.email
 const editUser = ref({
